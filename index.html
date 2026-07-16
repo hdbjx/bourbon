@@ -221,7 +221,7 @@
 
 <script>
 /* ====== CONFIG ====== */
-const API_URL = 'https://script.google.com/macros/s/AKfycbyCedxdSqTMFECH5CfwP2k1JNWlFD7AmYOHefdEk7MH2qPnPAl5nHZENFsgW7WqdRcQ/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwtUdKEUOOcUXY3u0q48A9D54Np9nwK89x9ubanyHJ0aLFq227nz9rkdxFkODJjMmz_0Q/exec';
 /* ==================== */
 
 let bottles = [];
@@ -273,11 +273,27 @@ async function load(fromCache = true){
     const res = await fetch(API_URL);
     const data = await res.json();
     if(data.ok){
+      if(!data.bottles.length && bottles.length){
+        // API reached fine but returned zero rows while we already have cached
+        // data — almost always a misconfigured SHEET_NAME, not an empty sheet.
+        $('list').innerHTML = `<div class="empty">The sheet responded but sent back 0 bottles.<br>
+          Check that SHEET_NAME in Code.gs matches the tab name exactly, then redeploy.<br>
+          Showing the last saved copy for now.</div>` + $('list').innerHTML;
+        return;
+      }
       bottles = data.bottles;
       localStorage.setItem('cellar', JSON.stringify(bottles));
       render();
+    } else {
+      console.error('API error:', data.error);
+      if(!bottles.length){
+        $('list').innerHTML = `<div class="empty">The sheet returned an error:<br><b>${esc(data.error||'unknown')}</b><br>Check Code.gs and redeploy.</div>`;
+      } else {
+        toast('Sync failed \u2014 showing last saved copy');
+      }
     }
   }catch(err){
+    console.error('Fetch failed:', err);
     if(!bottles.length) $('list').innerHTML =
       '<div class="empty">Couldn\u2019t reach the collection.<br>Check the internet connection, then reopen the app.</div>';
   }
