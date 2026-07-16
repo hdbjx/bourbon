@@ -171,12 +171,16 @@
   .confirmcard b{color:var(--copper)}
 
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom));z-index:30;background:var(--ink);
-    color:var(--paper);padding:13px 18px 13px 22px;border-radius:99px;font-size:15px;font-weight:600;opacity:0;
-    transition:opacity .25s;pointer-events:none;display:flex;align-items:center;gap:14px;white-space:nowrap;
+    color:var(--paper);padding:13px 16px 13px 20px;border-radius:18px;font-size:15px;font-weight:600;opacity:0;
+    transition:opacity .25s;pointer-events:none;display:flex;align-items:center;gap:12px;
+    width:calc(100% - 40px);max-width:420px;box-sizing:border-box;
     box-shadow:0 6px 18px rgba(33,29,24,.3)}
   .toast.show{opacity:1;pointer-events:auto}
-  .toast button{background:var(--paper);color:var(--ink);border:none;border-radius:99px;padding:8px 16px;
-    font-size:14px;font-weight:700;font-family:inherit;cursor:pointer}
+  .toast .tmsg{flex:1;line-height:1.4}
+  .toast button{flex:none;background:var(--paper);color:var(--ink);border:none;border-radius:99px;padding:8px 14px;
+    font-size:13.5px;font-weight:700;font-family:inherit;cursor:pointer}
+  .toast .tx{flex:none;background:none;border:none;color:var(--paper);opacity:.6;font-size:19px;line-height:1;
+    padding:0 0 0 2px;cursor:pointer}
 
   /* filter / sort panel */
   .fsection{margin-bottom:22px}
@@ -693,16 +697,24 @@ function openSortPanel(){
 /* ---------- ui plumbing ---------- */
 function closeOverlays(){ document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open')); }
 let toastTimer;
-function toast(msg, withUndo){
-  const t=$('toast');
-  t.innerHTML = esc(msg) + (withUndo?'<button id="undoBtn">Undo</button>':'');
+function toast(msg, opts){
+  // Back-compat: toast(msg, true) still means "show Undo" like before.
+  if(opts === true) opts = { withUndo:true };
+  opts = opts || {};
+  const isError = /can\u2019t|couldn\u2019t|failed|error|no connection|isn\u2019t set up|try again/i.test(msg);
+  const t = $('toast');
+  t.innerHTML = `<span class="tmsg">${esc(msg)}</span>` +
+    (opts.withUndo ? '<button id="undoBtn">Undo</button>' : '') +
+    (isError ? '<button class="tx" id="toastClose" aria-label="Dismiss">\u00d7</button>' : '');
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>{ t.classList.remove('show'); undoAction=null; }, withUndo?6000:2200);
+  const duration = opts.withUndo ? 6000 : (isError ? 9000 : 2200);
+  toastTimer = setTimeout(()=>{ t.classList.remove('show'); undoAction=null; }, duration);
 }
 
 document.addEventListener('click', e=>{
   if(e.target.id==='undoBtn'){ undo(); return; }
+  if(e.target.id==='toastClose'){ clearTimeout(toastTimer); $('toast').classList.remove('show'); return; }
   const chip = e.target.closest('.chip');
   if(chip){ typeFilter = chip.dataset.t; render(); return; }
   if(e.target.closest('#bigadd')){ openAdd(); return; }
