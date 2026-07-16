@@ -142,6 +142,20 @@
     padding:15px;color:var(--ink);font-size:17px;font-family:inherit;outline:none;-webkit-appearance:none}
   .field input:focus,.field select:focus{border-color:var(--ink)}
   .stepnote{font-size:14.5px;color:var(--ink-soft);margin-bottom:16px;line-height:1.55}
+  .photobtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+    background:var(--copper);color:#fff;border:none;border-radius:var(--radius);
+    padding:18px;font-family:inherit;font-size:17px;font-weight:700;cursor:pointer;margin-bottom:14px}
+  .photobtn .ic{font-size:21px;line-height:1}
+  .ordiv{display:flex;align-items:center;gap:12px;margin:2px 0 16px;color:var(--ink-soft);font-size:13px;font-weight:600}
+  .ordiv::before,.ordiv::after{content:'';flex:1;height:1px;background:var(--line)}
+  .photoloading{text-align:center;padding:60px 20px}
+  .photoloading .spin{width:46px;height:46px;border-radius:50%;border:3px solid var(--line);
+    border-top-color:var(--copper);margin:0 auto 18px;animation:spin 0.9s linear infinite}
+  .photoloading .msg{font-family:var(--serif);font-weight:700;font-size:19px}
+  .photoloading .sub{font-size:14px;color:var(--ink-soft);margin-top:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .photobadge{display:flex;align-items:center;gap:8px;background:var(--copper-soft);color:var(--copper);
+    border:1px solid var(--copper);border-radius:10px;padding:11px 14px;font-size:13.5px;font-weight:600;margin-bottom:16px}
   .suggest{margin-top:8px}
   .suggest .s{display:flex;align-items:center;gap:12px;background:#fff;border:1.5px solid var(--line);
     border-radius:var(--radius);padding:13px 14px;margin-bottom:8px;cursor:pointer}
@@ -227,13 +241,14 @@
 
 <div class="overlay" id="detailOverlay"><div class="sheet" id="detailSheet"></div></div>
 <div class="overlay" id="addOverlay"><div class="sheet" id="addSheet"></div></div>
+<input type="file" accept="image/*" capture="environment" id="photoInput" style="display:none">
 <div class="overlay" id="filterOverlay"><div class="sheet" id="filterSheet"></div></div>
 <div class="overlay" id="sortOverlay"><div class="sheet" id="sortSheet"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
 /* ====== CONFIG ====== */
-const API_URL = 'https://script.google.com/macros/s/AKfycbyLLtFrabmbH9zd73tHuViBCOZjcb0LDpoZKsoTcQ1fmBclRohbwHSfdy_igr-r3opTTw/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyJNmHfU4Z1z8dp30AVfSFHAqlbOEIl3AlDwRUzfXjMPMtbuP_KZkmzyWCHH2I6-IY4Zw/exec';
 /* ==================== */
 
 let bottles = [];
@@ -441,7 +456,9 @@ function openAdd(){
   $('addSheet').innerHTML = `
     <button class="closex" data-act="close">\u00d7</button>
     <h2>I bought a bottle</h2>
-    <div class="stepnote">Type the name on the label. If it\u2019s already in the collection, one tap adds it \u2014 no typing the details again.</div>
+    <div class="stepnote">Snap the label and the details fill themselves in \u2014 just check it over and save.</div>
+    <button class="photobtn" id="snapBtn"><span class="ic">\ud83d\udcf7</span> Take a photo of the label</button>
+    <div class="ordiv">OR TYPE IT</div>
     <div class="field"><label>Bottle name</label>
       <input id="a_name" autocomplete="off" autocapitalize="words" placeholder="e.g. Eagle Rare">
     </div>
@@ -450,7 +467,61 @@ function openAdd(){
   $('addOverlay').classList.add('open');
   const inp = $('a_name');
   inp.addEventListener('input', renderSuggest);
-  setTimeout(()=>inp.focus(), 250);
+}
+
+function openPhotoLoading(){
+  $('addSheet').innerHTML = `
+    <button class="closex" data-act="close">\u00d7</button>
+    <div class="photoloading">
+      <div class="spin"></div>
+      <div class="msg">Reading the label\u2026</div>
+      <div class="sub">This takes a few seconds</div>
+    </div>`;
+}
+
+// Resizes+compresses a photo client-side before sending it up, so the
+// request stays small and fast on cellular. Returns raw base64 (no prefix).
+function compressImage(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 1024;
+        let { width, height } = img;
+        if(width > height){ if(width > maxDim){ height = Math.round(height * maxDim/width); width = maxDim; } }
+        else { if(height > maxDim){ width = Math.round(width * maxDim/height); height = maxDim; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.82).split(',')[1]);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handlePhotoSelected(e){
+  const file = e.target.files[0];
+  e.target.value = ''; // allow re-selecting the same file next time
+  if(!file) return;
+  openPhotoLoading();
+  try{
+    const base64 = await compressImage(file);
+    const res = await post({ action:'analyzePhoto', imageBase64:base64, mimeType:'image/jpeg' });
+    if(res.ok){
+      openNewForm(res.bottle, true);
+    } else {
+      toast(res.error || 'Couldn\u2019t read that label \u2014 fill it in by hand');
+      openNewForm({}, false);
+    }
+  }catch(err){
+    toast('Photo upload failed \u2014 check the connection');
+    closeOverlays();
+  }
 }
 
 function renderSuggest(){
@@ -486,24 +557,32 @@ function confirmExisting(row){
     <button class="linkbtn" id="notSame" data-name="${esc(b.name)}">Mine is different (new pick / store / proof)</button>`;
 }
 
-function openNewForm(name){
+function openNewForm(prefill, fromPhoto){
+  const p = (typeof prefill === 'string') ? { name: prefill } : (prefill || {});
+  const TYPES = ['Bourbon','Rye','Whiskey','Wheat','American Whiskey','Other'];
+  const SIZES = ['750 mL','1 L','1.75 L','375 mL'];
+  const type = TYPES.includes(p.type) ? p.type : 'Bourbon';
+  const size = SIZES.includes(p.size) ? p.size : '750 mL';
+  const badge = fromPhoto
+    ? `<div class="photobadge">\ud83d\udd0d Read from the photo \u2014 check each field, then save</div>`
+    : `<div class="stepnote">Fill in everything off the label \u2014 this is the only place it gets logged. Put NA if the label doesn\u2019t say.</div>`;
   $('addSheet').innerHTML = `
     <button class="closex" data-act="close">\u00d7</button>
     <h2>New bottle</h2>
-    <div class="stepnote">Fill in everything off the label \u2014 this is the only place it gets logged. Put NA if the label doesn\u2019t say.</div>
-    <div class="field"><label>Name</label><input id="f_name" value="${esc(name)}" autocapitalize="words"></div>
+    ${badge}
+    <div class="field"><label>Name</label><input id="f_name" value="${esc(p.name||'')}" autocapitalize="words"></div>
     <div class="field"><label>How many did you buy?</label>
       <select id="f_amount">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<option>${n}</option>`).join('')}</select></div>
     <div class="field"><label>Type</label>
-      <select id="f_type">${['Bourbon','Rye','Whiskey','Wheat','American Whiskey','Other'].map(t=>`<option>${t}</option>`).join('')}</select></div>
-    <div class="field"><label>Style <em>(Single Barrel, Small Batch, BNB, Barrel Proof\u2026)</em></label><input id="f_style"></div>
-    <div class="field"><label>Age <em>(e.g. 10 Years \u2014 NA if not stated)</em></label><input id="f_age" placeholder="NA"></div>
-    <div class="field"><label>Proof</label><input id="f_proof" inputmode="decimal" placeholder="e.g. 107"></div>
-    <div class="field"><label>Date on bottle <em>(bottled / dump date \u2014 NA if none)</em></label><input id="f_date" placeholder="NA"></div>
+      <select id="f_type">${TYPES.map(t=>`<option ${t===type?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="field"><label>Style <em>(Single Barrel, Small Batch, BNB, Barrel Proof\u2026)</em></label><input id="f_style" value="${esc(p.style||'')}"></div>
+    <div class="field"><label>Age <em>(e.g. 10 Years \u2014 NA if not stated)</em></label><input id="f_age" value="${esc(p.age||'')}" placeholder="NA"></div>
+    <div class="field"><label>Proof</label><input id="f_proof" inputmode="decimal" value="${esc(p.proof||'')}" placeholder="e.g. 107"></div>
+    <div class="field"><label>Date on bottle <em>(bottled / dump date \u2014 NA if none)</em></label><input id="f_date" value="${esc(p.date||'')}" placeholder="NA"></div>
     <div class="field"><label>Size</label>
-      <select id="f_size"><option>750 mL</option><option>1 L</option><option>1.75 L</option><option>375 mL</option></select></div>
-    <div class="field"><label>Notes <em>(store pick, society, barrel #\u2026)</em></label><input id="f_notes"></div>
-    <div class="field"><label>Extra notes <em>(BN #, bottle x of y\u2026)</em></label><input id="f_extra"></div>
+      <select id="f_size">${SIZES.map(s=>`<option ${s===size?'selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="field"><label>Notes <em>(store pick, society, barrel #\u2026)</em></label><input id="f_notes" value="${esc(p.notes||'')}"></div>
+    <div class="field"><label>Extra notes <em>(BN #, bottle x of y\u2026)</em></label><input id="f_extra" value="${esc(p.extraNotes||'')}"></div>
     <button class="btn primary big" id="saveNew" style="width:100%;margin-top:6px">Add to the cellar</button>`;
 }
 
@@ -627,6 +706,7 @@ document.addEventListener('click', e=>{
   const chip = e.target.closest('.chip');
   if(chip){ typeFilter = chip.dataset.t; render(); return; }
   if(e.target.closest('#bigadd')){ openAdd(); return; }
+  if(e.target.closest('#snapBtn')){ $('photoInput').click(); return; }
   if(e.target.closest('#sortBtn')){ openSortPanel(); return; }
   if(e.target.closest('#filterBtn')){ openFilterPanel(); return; }
 
@@ -686,6 +766,7 @@ document.addEventListener('click', e=>{
   if(e.target.classList.contains('overlay')) closeOverlays();
 });
 $('q').addEventListener('input', render);
+$('photoInput').addEventListener('change', handlePhotoSelected);
 
 load();
 </script>
