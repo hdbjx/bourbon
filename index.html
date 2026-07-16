@@ -54,7 +54,20 @@
   .chip{flex:none;border:1.5px solid var(--line);background:#fff;color:var(--ink-soft);
     padding:9px 16px;border-radius:99px;font-size:14.5px;font-weight:600;cursor:pointer;font-family:inherit}
   .chip.on{background:var(--copper);border-color:var(--copper);color:#fff}
-  .count{font-size:12.5px;color:var(--ink-soft);margin-top:9px;display:block;text-transform:uppercase;letter-spacing:.08em}
+
+  .toolrow{display:flex;align-items:center;justify-content:space-between;margin-top:9px;gap:10px}
+  .count{font-size:12.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em}
+  .toolbtns{display:flex;gap:8px}
+  .toolbtn{display:flex;align-items:center;gap:6px;background:#fff;border:1.5px solid var(--line);
+    color:var(--ink);padding:8px 13px;border-radius:99px;font-size:13.5px;font-weight:600;font-family:inherit;cursor:pointer}
+  .toolbtn.active{border-color:var(--copper);color:var(--copper)}
+  .toolbtn .dot{width:7px;height:7px;border-radius:50%;background:var(--copper)}
+  .activebar{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+  .pill{display:flex;align-items:center;gap:6px;background:var(--copper-soft);color:var(--copper);
+    border:1px solid var(--copper);border-radius:99px;padding:6px 8px 6px 12px;font-size:12.5px;font-weight:600}
+  .pill button{background:none;border:none;color:var(--copper);font-size:15px;line-height:1;cursor:pointer;padding:0 2px}
+  .clearall{font-size:12.5px;color:var(--ink-soft);text-decoration:underline;background:none;border:none;
+    font-family:inherit;cursor:pointer;padding:6px 0}
 
   /* ledger rows */
   .card{display:flex;gap:14px;align-items:center;background:transparent;border-bottom:1px solid var(--line);
@@ -138,6 +151,37 @@
   .toast.show{opacity:1;pointer-events:auto}
   .toast button{background:var(--paper);color:var(--ink);border:none;border-radius:99px;padding:8px 16px;
     font-size:14px;font-weight:700;font-family:inherit;cursor:pointer}
+
+  /* filter / sort panel */
+  .fsection{margin-bottom:22px}
+  .fsection h3{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);
+    font-weight:700;margin-bottom:10px}
+  .fgrid{display:flex;flex-wrap:wrap;gap:8px}
+  .fopt{border:1.5px solid var(--line);background:#fff;color:var(--ink);padding:9px 15px;border-radius:99px;
+    font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+  .fopt.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+  .rangebox{display:flex;align-items:center;gap:10px}
+  .rangebox input{width:100%;background:#fff;border:1.5px solid var(--line);border-radius:10px;
+    padding:13px 14px;font-size:16px;font-family:inherit;color:var(--ink);outline:none}
+  .rangebox input:focus{border-color:var(--ink)}
+  .rangebox span{color:var(--ink-soft);font-size:14px}
+  .togglerow{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1.5px solid var(--line);
+    border-radius:var(--radius);padding:14px 16px}
+  .togglerow span{font-size:15.5px;font-weight:500}
+  .switch{position:relative;width:48px;height:28px;flex:none}
+  .switch input{opacity:0;width:100%;height:100%;position:absolute;margin:0;cursor:pointer;z-index:1}
+  .switch .track{position:absolute;inset:0;background:var(--line);border-radius:99px;transition:background .15s}
+  .switch .knob{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;
+    box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
+  .switch input:checked ~ .track{background:var(--copper)}
+  .switch input:checked ~ .knob{transform:translateX(20px)}
+  .sortlist{display:flex;flex-direction:column;gap:8px}
+  .sortopt{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1.5px solid var(--line);
+    border-radius:var(--radius);padding:14px 16px;cursor:pointer;font-size:15.5px;font-weight:500}
+  .sortopt.on{border-color:var(--ink);background:var(--paper-2)}
+  .sortopt .check{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line);flex:none}
+  .sortopt.on .check{border-color:var(--ink);background:var(--ink);position:relative}
+  .sortopt.on .check::after{content:'';position:absolute;inset:5px;background:var(--paper);border-radius:50%}
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -156,7 +200,14 @@
       <input id="q" type="search" placeholder="Search the collection…">
     </div>
     <div class="chips" id="chips"></div>
-    <span class="count" id="count"></span>
+    <div class="toolrow">
+      <span class="count" id="count"></span>
+      <div class="toolbtns">
+        <button class="toolbtn" id="sortBtn">Sort</button>
+        <button class="toolbtn" id="filterBtn">Filters</button>
+      </div>
+    </div>
+    <div class="activebar" id="activebar"></div>
   </div>
 
   <div id="list"><div class="loading">Opening the cellar</div></div>
@@ -164,11 +215,13 @@
 
 <div class="overlay" id="detailOverlay"><div class="sheet" id="detailSheet"></div></div>
 <div class="overlay" id="addOverlay"><div class="sheet" id="addSheet"></div></div>
+<div class="overlay" id="filterOverlay"><div class="sheet" id="filterSheet"></div></div>
+<div class="overlay" id="sortOverlay"><div class="sheet" id="sortSheet"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
 /* ====== CONFIG ====== */
-const API_URL = 'https://script.google.com/macros/s/AKfycbxgmPNgnYiBWCcTYcEX46l2YcSrwkVedebjx0Z2tgB8Xav6FAELEXycCP2PDpP8UM7ulA/exec';
+const API_URL = 'PASTE_YOUR_GAS_EXEC_URL_HERE';
 /* ==================== */
 
 let bottles = [];
@@ -177,6 +230,38 @@ let busy = false;
 let undoAction = null;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+
+/* ---- filter / sort state ---- */
+const SORTS = [
+  {id:'name', label:'Name, A \u2013 Z'},
+  {id:'nameZ', label:'Name, Z \u2013 A'},
+  {id:'proofHi', label:'Proof, high \u2013 low'},
+  {id:'proofLo', label:'Proof, low \u2013 high'},
+  {id:'amountHi', label:'Most bottles held'},
+  {id:'ageHi', label:'Oldest age stated'},
+];
+let sortBy = 'name';
+let filters = {
+  sizes: new Set(),      // exact size strings
+  proofMin: '', proofMax: '',
+  inStockOnly: false,
+  hasNotesOnly: false,
+};
+
+function activeFilterCount(){
+  let n = 0;
+  if(typeFilter!=='All') n++;
+  n += filters.sizes.size;
+  if(filters.proofMin || filters.proofMax) n++;
+  if(filters.inStockOnly) n++;
+  if(filters.hasNotesOnly) n++;
+  return n;
+}
+
+function parseAge(a){ const m = String(a).match(/(\d+(\.\d+)?)/); return m?parseFloat(m[1]):-1; }
+function parseProof(p){ const n = parseFloat(p); return isNaN(n)?-1:n; }
+
+function allSizes(){ return [...new Set(bottles.map(b=>b.size).filter(Boolean))].sort(); }
 
 /* ---------- data ---------- */
 async function load(fromCache = true){
@@ -225,18 +310,51 @@ function types(){ return ['All',...[...new Set(bottles.map(b=>b.type).filter(Boo
 function render(){
   $('chips').innerHTML = types().map(t=>
     `<button class="chip ${t===typeFilter?'on':''}" data-t="${esc(t)}">${esc(t)}</button>`).join('');
+
   const q = $('q').value.trim().toLowerCase();
   let rows = bottles.filter(b=>{
     if(typeFilter!=='All' && b.type!==typeFilter) return false;
+    if(filters.sizes.size && !filters.sizes.has(b.size)) return false;
+    if(filters.inStockOnly && b.amount<=0) return false;
+    if(filters.hasNotesOnly && !(b.notes||b.extraNotes)) return false;
+    if(filters.proofMin && parseProof(b.proof) < parseFloat(filters.proofMin)) return false;
+    if(filters.proofMax && parseProof(b.proof) > parseFloat(filters.proofMax)) return false;
     if(!q) return true;
     return [b.name,b.style,b.notes,b.extraNotes,b.age,b.proof].join(' ').toLowerCase().includes(q);
-  }).sort((a,b)=>a.name.localeCompare(b.name) || String(a.style).localeCompare(String(b.style)));
+  });
+
+  rows.sort((a,b)=>{
+    if(sortBy==='name') return a.name.localeCompare(b.name) || String(a.style).localeCompare(String(b.style));
+    if(sortBy==='nameZ') return b.name.localeCompare(a.name);
+    if(sortBy==='proofHi') return parseProof(b.proof)-parseProof(a.proof);
+    if(sortBy==='proofLo') return parseProof(a.proof)-parseProof(b.proof);
+    if(sortBy==='amountHi') return b.amount-a.amount || a.name.localeCompare(b.name);
+    if(sortBy==='ageHi') return parseAge(b.age)-parseAge(a.age);
+    return 0;
+  });
 
   const total = bottles.reduce((s,b)=>s+b.amount,0);
   $('tally').innerHTML = `<b>${total}</b> bottles<br><b>${bottles.length}</b> labels`;
   $('count').textContent = rows.length + ' shown';
+
+  const fc = activeFilterCount();
+  $('filterBtn').classList.toggle('active', fc>0);
+  $('filterBtn').innerHTML = fc>0 ? `Filters <span class="dot"></span> ${fc}` : 'Filters';
+  $('sortBtn').classList.toggle('active', sortBy!=='name');
+  $('sortBtn').textContent = 'Sort: ' + (SORTS.find(s=>s.id===sortBy)||SORTS[0]).label.split(',')[0];
+
+  const pills = [];
+  if(typeFilter!=='All') pills.push(['type', typeFilter]);
+  filters.sizes.forEach(s=>pills.push(['size', s]));
+  if(filters.proofMin || filters.proofMax) pills.push(['proof', `${filters.proofMin||'0'}\u2013${filters.proofMax||'\u221e'} proof`]);
+  if(filters.inStockOnly) pills.push(['inStock', 'In stock only']);
+  if(filters.hasNotesOnly) pills.push(['notes', 'Has notes']);
+  $('activebar').innerHTML = pills.length ? pills.map(p=>
+    `<span class="pill" data-kind="${p[0]}" data-val="${esc(p[1])}">${esc(p[1])}<button data-act="rmpill">\u00d7</button></span>`
+  ).join('') + `<button class="clearall" data-act="clearall">Clear all</button>` : '';
+
   if(!rows.length){
-    $('list').innerHTML = '<div class="empty">Nothing matches that search.</div>';
+    $('list').innerHTML = '<div class="empty">Nothing matches. Try loosening a filter.</div>';
     return;
   }
   $('list').innerHTML = rows.map(b=>{
@@ -403,6 +521,68 @@ async function saveEdit(row){
   }}, 'Saved');
 }
 
+/* ---------- filter panel ---------- */
+function openFilterPanel(){
+  const sizes = allSizes();
+  $('filterSheet').innerHTML = `
+    <button class="closex" data-act="close">\u00d7</button>
+    <h2>Filters</h2>
+    <div class="sub">Narrow down what\u2019s showing</div>
+
+    <div class="fsection">
+      <h3>Bottle size</h3>
+      <div class="fgrid">${sizes.map(s=>
+        `<button class="fopt ${filters.sizes.has(s)?'on':''}" data-fsize="${esc(s)}">${esc(s)}</button>`).join('')}</div>
+    </div>
+
+    <div class="fsection">
+      <h3>Proof range</h3>
+      <div class="rangebox">
+        <input id="fp_min" type="number" inputmode="decimal" placeholder="Min" value="${esc(filters.proofMin)}">
+        <span>to</span>
+        <input id="fp_max" type="number" inputmode="decimal" placeholder="Max" value="${esc(filters.proofMax)}">
+      </div>
+    </div>
+
+    <div class="fsection">
+      <h3>Only show</h3>
+      <div class="togglerow" style="margin-bottom:10px">
+        <span>In stock (1 or more)</span>
+        <label class="switch"><input type="checkbox" id="f_stock" ${filters.inStockOnly?'checked':''}><span class="track"></span><span class="knob"></span></label>
+      </div>
+      <div class="togglerow">
+        <span>Has notes</span>
+        <label class="switch"><input type="checkbox" id="f_notes" ${filters.hasNotesOnly?'checked':''}><span class="track"></span><span class="knob"></span></label>
+      </div>
+    </div>
+
+    <div class="btnrow">
+      <button class="btn" id="clearFilters">Clear filters</button>
+      <button class="btn primary big" id="applyFilters">Show results</button>
+    </div>`;
+  $('filterOverlay').classList.add('open');
+}
+
+function applyFilterPanel(){
+  filters.proofMin = $('fp_min').value.trim();
+  filters.proofMax = $('fp_max').value.trim();
+  filters.inStockOnly = $('f_stock').checked;
+  filters.hasNotesOnly = $('f_notes').checked;
+  closeOverlays();
+  render();
+}
+
+/* ---------- sort panel ---------- */
+function openSortPanel(){
+  $('sortSheet').innerHTML = `
+    <button class="closex" data-act="close">\u00d7</button>
+    <h2>Sort by</h2>
+    <div class="sub">Choose how the collection is ordered</div>
+    <div class="sortlist">${SORTS.map(s=>
+      `<div class="sortopt ${s.id===sortBy?'on':''}" data-sort="${s.id}"><span>${s.label}</span><span class="check"></span></div>`).join('')}</div>`;
+  $('sortOverlay').classList.add('open');
+}
+
 /* ---------- ui plumbing ---------- */
 function closeOverlays(){ document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open')); }
 let toastTimer;
@@ -419,6 +599,41 @@ document.addEventListener('click', e=>{
   const chip = e.target.closest('.chip');
   if(chip){ typeFilter = chip.dataset.t; render(); return; }
   if(e.target.closest('#bigadd')){ openAdd(); return; }
+  if(e.target.closest('#sortBtn')){ openSortPanel(); return; }
+  if(e.target.closest('#filterBtn')){ openFilterPanel(); return; }
+
+  const sortOpt = e.target.closest('.sortopt');
+  if(sortOpt){ sortBy = sortOpt.dataset.sort; closeOverlays(); render(); return; }
+
+  const fsize = e.target.closest('.fopt[data-fsize]');
+  if(fsize){
+    const s = fsize.dataset.fsize;
+    filters.sizes.has(s) ? filters.sizes.delete(s) : filters.sizes.add(s);
+    fsize.classList.toggle('on');
+    return;
+  }
+  if(e.target.closest('#clearFilters')){
+    filters = { sizes:new Set(), proofMin:'', proofMax:'', inStockOnly:false, hasNotesOnly:false };
+    closeOverlays(); render(); return;
+  }
+  if(e.target.closest('#applyFilters')){ applyFilterPanel(); return; }
+
+  const rmpill = e.target.closest('[data-act="rmpill"]');
+  if(rmpill){
+    const p = rmpill.closest('.pill'); const kind = p.dataset.kind, val = p.dataset.val;
+    if(kind==='type') typeFilter='All';
+    else if(kind==='size') filters.sizes.delete(val);
+    else if(kind==='proof'){ filters.proofMin=''; filters.proofMax=''; }
+    else if(kind==='inStock') filters.inStockOnly=false;
+    else if(kind==='notes') filters.hasNotesOnly=false;
+    render(); return;
+  }
+  if(e.target.closest('[data-act="clearall"]')){
+    typeFilter='All';
+    filters = { sizes:new Set(), proofMin:'', proofMax:'', inStockOnly:false, hasNotesOnly:false };
+    render(); return;
+  }
+
   const sug = e.target.closest('.suggest .s');
   if(sug){ confirmExisting(Number(sug.dataset.row)); return; }
   if(e.target.closest('#newLabelBtn')){ openNewForm($('a_name').value.trim()); return; }
