@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>The Cellar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --oak:#171210; --oak-2:#221a15; --oak-3:#2e231c;
+    --amber:#d98e32; --amber-deep:#b06a1c;
+    --parchment:#efe6d5; --parchment-dim:#b7a894;
+    --wax:#8c2f2f; --green:#4e7a4e; --line:#3a2d23; --radius:14px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{background:var(--oak)}
+  body{font-family:'Inter',sans-serif;color:var(--parchment);background:var(--oak);min-height:100vh;padding-bottom:110px;font-size:17px}
+  body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(ellipse at top, rgba(217,142,50,.07), transparent 55%);}
+  .wrap{max-width:760px;margin:0 auto;padding:0 16px;position:relative;z-index:1}
+
+  header{padding:24px 0 8px;text-align:center}
+  .brand{font-family:'Marcellus',serif;font-size:34px;letter-spacing:.12em}
+  .brand span{color:var(--amber)}
+  .tally{margin-top:4px;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--parchment-dim)}
+  .tally b{color:var(--amber);font-weight:600}
+  .rule{width:64px;height:2px;background:var(--wax);margin:12px auto 0;border-radius:2px}
+
+  /* giant new-bottle button */
+  .bigadd{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;margin:14px 0 4px;
+    background:linear-gradient(180deg,#e59c3f,var(--amber-deep));color:#1c130a;border:none;border-radius:16px;
+    padding:20px;font-family:inherit;font-size:20px;font-weight:700;cursor:pointer;
+    box-shadow:0 4px 14px rgba(0,0,0,.45)}
+  .bigadd:active{transform:scale(.99)}
+  .bigadd .plus{font-size:28px;line-height:1}
+
+  .controls{position:sticky;top:0;z-index:5;background:linear-gradient(var(--oak) 82%,transparent);padding:10px 0 14px}
+  .search{display:flex;align-items:center;gap:10px;background:var(--oak-2);border:1px solid var(--line);
+    border-radius:var(--radius);padding:14px 16px}
+  .search svg{flex:none;opacity:.5}
+  .search input{flex:1;background:none;border:none;outline:none;color:var(--parchment);font-size:18px;font-family:inherit;min-width:0}
+  .search input::placeholder{color:var(--parchment-dim)}
+  .chips{display:flex;gap:8px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;border:1px solid var(--line);background:var(--oak-2);color:var(--parchment-dim);
+    padding:10px 16px;border-radius:99px;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit}
+  .chip.on{background:var(--amber);border-color:var(--amber);color:#1c130a;font-weight:600}
+  .count{font-size:13px;color:var(--parchment-dim);margin-top:8px;display:block}
+
+  .card{display:flex;gap:14px;align-items:center;background:var(--oak-2);border:1px solid var(--line);
+    border-radius:var(--radius);padding:15px 16px;margin-bottom:10px;cursor:pointer}
+  .card:active{background:var(--oak-3)}
+  .proofbadge{flex:none;width:58px;height:58px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #f0b45e, var(--amber-deep));
+    display:flex;flex-direction:column;align-items:center;justify-content:center;color:#241505;
+    box-shadow:0 2px 8px rgba(0,0,0,.4)}
+  .proofbadge .p{font-family:'Marcellus',serif;font-size:17px;line-height:1}
+  .proofbadge .l{font-size:8px;letter-spacing:.15em;text-transform:uppercase;margin-top:2px;opacity:.75}
+  .proofbadge.rye{background:radial-gradient(circle at 35% 30%, #b8564f, #6e2323);color:#f7e5df}
+  .cinfo{flex:1;min-width:0}
+  .cname{font-family:'Marcellus',serif;font-size:20px;line-height:1.15}
+  .cstyle{font-size:14px;color:var(--amber);margin-top:2px}
+  .cmeta{font-size:13px;color:var(--parchment-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .camt{flex:none;text-align:center;min-width:46px}
+  .camt .n{font-family:'Marcellus',serif;font-size:28px}
+  .camt .lbl{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--parchment-dim)}
+  .camt.zero .n{color:var(--wax)}
+  .empty{text-align:center;color:var(--parchment-dim);padding:60px 20px;font-size:16px;line-height:1.5}
+  .loading{text-align:center;padding:50px 0;color:var(--parchment-dim);font-size:14px;letter-spacing:.15em;text-transform:uppercase}
+
+  /* overlays */
+  .overlay{position:fixed;inset:0;background:rgba(10,7,5,.78);z-index:20;display:none;align-items:flex-end;justify-content:center}
+  .overlay.open{display:flex}
+  .sheet{background:var(--oak-2);border:1px solid var(--line);border-radius:20px 20px 0 0;width:100%;max-width:760px;
+    max-height:90vh;overflow-y:auto;padding:22px 20px 44px}
+  .sheet h2{font-family:'Marcellus',serif;font-size:26px;margin-bottom:2px}
+  .sheet .sub{color:var(--amber);font-size:15px;margin-bottom:18px}
+  .closex{position:sticky;top:0;float:right;background:var(--oak-3);border:1px solid var(--line);color:var(--parchment-dim);
+    width:40px;height:40px;border-radius:50%;font-size:20px;cursor:pointer;margin-left:10px}
+
+  .qty{display:flex;align-items:center;justify-content:center;gap:20px;background:var(--oak);border:1px solid var(--line);
+    border-radius:var(--radius);padding:16px;margin-bottom:8px}
+  .qty button{width:64px;height:64px;border-radius:50%;border:1px solid var(--line);background:var(--oak-3);
+    color:var(--parchment);font-size:32px;cursor:pointer}
+  .qty button:active{background:var(--amber);color:#1c130a}
+  .qty .qn{font-family:'Marcellus',serif;font-size:48px;min-width:74px;text-align:center}
+  .qty .qlbl{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--parchment-dim);text-align:center}
+  .hint{text-align:center;font-size:13px;color:var(--parchment-dim);margin-bottom:16px}
+
+  .detail{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+  .dcell{background:var(--oak);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .dcell .k{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--parchment-dim)}
+  .dcell .v{font-size:16px;margin-top:3px;word-break:break-word}
+  .dcell.wide{grid-column:1/-1}
+  .btnrow{display:flex;gap:10px}
+  .btn{flex:1;padding:17px;border-radius:12px;border:1px solid var(--line);background:var(--oak-3);
+    color:var(--parchment);font-size:17px;font-weight:600;font-family:inherit;cursor:pointer}
+  .btn.primary{background:var(--amber);border-color:var(--amber);color:#1c130a}
+  .btn.big{font-size:19px;padding:19px}
+  .btn:disabled{opacity:.5}
+  .linkbtn{display:block;margin:18px auto 0;background:none;border:none;color:var(--parchment-dim);
+    font-size:14px;font-family:inherit;text-decoration:underline;cursor:pointer}
+
+  /* add wizard */
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--parchment-dim);margin-bottom:6px}
+  .field label em{font-style:normal;color:var(--parchment-dim);opacity:.7;text-transform:none;letter-spacing:0}
+  .field input,.field select{width:100%;background:var(--oak);border:1px solid var(--line);border-radius:12px;
+    padding:16px;color:var(--parchment);font-size:18px;font-family:inherit;outline:none;-webkit-appearance:none}
+  .field input:focus{border-color:var(--amber)}
+  .suggest{margin-top:8px}
+  .suggest .s{display:flex;align-items:center;gap:12px;background:var(--oak);border:1px solid var(--line);
+    border-radius:12px;padding:13px 14px;margin-bottom:8px;cursor:pointer}
+  .suggest .s:active{border-color:var(--amber)}
+  .suggest .sname{font-family:'Marcellus',serif;font-size:17px;flex:1;min-width:0}
+  .suggest .sname small{display:block;font-family:'Inter';font-size:12.5px;color:var(--parchment-dim);margin-top:2px}
+  .suggest .splus{flex:none;background:var(--green);color:#eaf3ea;font-size:13px;font-weight:700;
+    padding:9px 13px;border-radius:99px;white-space:nowrap}
+  .stepnote{font-size:14px;color:var(--parchment-dim);margin-bottom:16px;line-height:1.5}
+  .confirmcard{background:var(--oak);border:1px solid var(--amber);border-radius:14px;padding:18px;margin-bottom:18px;text-align:center}
+  .confirmcard .big{font-family:'Marcellus',serif;font-size:24px;margin-bottom:4px}
+  .confirmcard .small{font-size:14px;color:var(--parchment-dim)}
+
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:30;background:var(--parchment);
+    color:#241505;padding:13px 18px 13px 22px;border-radius:99px;font-size:15px;font-weight:600;opacity:0;
+    transition:opacity .25s;pointer-events:none;display:flex;align-items:center;gap:14px;white-space:nowrap}
+  .toast.show{opacity:1;pointer-events:auto}
+  .toast button{background:#241505;color:var(--parchment);border:none;border-radius:99px;padding:8px 16px;
+    font-size:14px;font-weight:700;font-family:inherit;cursor:pointer}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">THE <span>CELLAR</span></div>
+    <div class="tally" id="tally">Loading collection…</div>
+    <div class="rule"></div>
+  </header>
+
+  <button class="bigadd" id="bigadd"><span class="plus">＋</span> I bought a bottle</button>
+
+  <div class="controls">
+    <div class="search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#efe6d5" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="q" type="search" placeholder="Search the collection…">
+    </div>
+    <div class="chips" id="chips"></div>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div id="list"><div class="loading">Opening the cellar</div></div>
+</div>
+
+<div class="overlay" id="detailOverlay"><div class="sheet" id="detailSheet"></div></div>
+<div class="overlay" id="addOverlay"><div class="sheet" id="addSheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ====== CONFIG ====== */
+const API_URL = 'PASTE_YOUR_GAS_EXEC_URL_HERE';
+/* ==================== */
+
+let bottles = [];
+let typeFilter = 'All';
+let busy = false;            // blocks double-taps on any write
+let undoAction = null;       // {row, delta} to reverse the last +/- 
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+
+/* ---------- data ---------- */
+async function load(fromCache = true){
+  if(fromCache){
+    const c = localStorage.getItem('cellar');
+    if(c){ try{ bottles = JSON.parse(c); render(); }catch(_){} }
+  }
+  try{
+    const res = await fetch(API_URL);
+    const data = await res.json();
+    if(data.ok){
+      bottles = data.bottles;
+      localStorage.setItem('cellar', JSON.stringify(bottles));
+      render();
+    }
+  }catch(err){
+    if(!bottles.length) $('list').innerHTML =
+      '<div class="empty">Couldn\u2019t reach the collection.<br>Check the internet connection, then reopen the app.</div>';
+  }
+}
+
+async function post(payload){
+  const res = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)});
+  return res.json();
+}
+
+/* one gate for all writes — spinner text + double-tap protection */
+async function write(payload, okMsg, withUndo){
+  if(busy) return null;
+  busy = true;
+  toast('Saving…');
+  try{
+    const r = await post(payload);
+    if(r.ok){ toast(okMsg, withUndo); await load(false); return r; }
+    toast('That didn\u2019t save — try again');
+    await load(false);
+    return null;
+  }catch(e){
+    toast('No connection — nothing was changed');
+    return null;
+  }finally{ busy = false; }
+}
+
+/* ---------- render ---------- */
+function types(){ return ['All',...[...new Set(bottles.map(b=>b.type).filter(Boolean))].sort()]; }
+
+function render(){
+  $('chips').innerHTML = types().map(t=>
+    `<button class="chip ${t===typeFilter?'on':''}" data-t="${esc(t)}">${esc(t)}</button>`).join('');
+  const q = $('q').value.trim().toLowerCase();
+  let rows = bottles.filter(b=>{
+    if(typeFilter!=='All' && b.type!==typeFilter) return false;
+    if(!q) return true;
+    return [b.name,b.style,b.notes,b.extraNotes,b.age,b.proof].join(' ').toLowerCase().includes(q);
+  }).sort((a,b)=>a.name.localeCompare(b.name) || String(a.style).localeCompare(String(b.style)));
+
+  const total = bottles.reduce((s,b)=>s+b.amount,0);
+  $('tally').innerHTML = `<b>${total}</b> bottles \u00b7 <b>${bottles.length}</b> labels`;
+  $('count').textContent = rows.length + ' shown';
+  if(!rows.length){
+    $('list').innerHTML = '<div class="empty">Nothing matches that search.</div>';
+    return;
+  }
+  $('list').innerHTML = rows.map(b=>{
+    const meta = [b.age && b.age!=='NA'?b.age:'', b.size, b.notes].filter(Boolean).join(' \u00b7 ');
+    return `<div class="card" data-row="${b.row}">
+      <div class="proofbadge ${b.type==='Rye'?'rye':''}"><div class="p">${esc(b.proof)||'\u2014'}</div><div class="l">proof</div></div>
+      <div class="cinfo">
+        <div class="cname">${esc(b.name)}</div>
+        ${b.style?`<div class="cstyle">${esc(b.style)}</div>`:''}
+        ${meta?`<div class="cmeta">${esc(meta)}</div>`:''}
+      </div>
+      <div class="camt ${b.amount===0?'zero':''}"><div class="n">${b.amount}</div><div class="lbl">on hand</div></div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- bottle detail ---------- */
+function openDetail(row){
+  const b = bottles.find(x=>x.row===row); if(!b) return;
+  const cells = [['Type',b.type],['Style',b.style],['Age',b.age],['Proof',b.proof],['Date',b.date],['Size',b.size]]
+    .filter(c=>c[1]&&c[1]!=='NA')
+    .map(c=>`<div class="dcell"><div class="k">${c[0]}</div><div class="v">${esc(c[1])}</div></div>`).join('');
+  const notes = [b.notes,b.extraNotes].filter(Boolean).join(' \u2014 ');
+  $('detailSheet').innerHTML = `
+    <button class="closex" data-act="close">\u00d7</button>
+    <h2>${esc(b.name)}</h2>
+    <div class="sub">${esc(b.style||b.type)}</div>
+    <div class="qty">
+      <button data-act="minus" aria-label="Opened or gave away one">\u2212</button>
+      <div><div class="qn" id="qn">${b.amount}</div><div class="qlbl">on hand</div></div>
+      <button data-act="plus" aria-label="Bought one more">\uff0b</button>
+    </div>
+    <div class="hint">\u2212 when you open or give one away &nbsp;\u00b7&nbsp; \uff0b when you buy another</div>
+    <div class="detail">${cells}${notes?`<div class="dcell wide"><div class="k">Notes</div><div class="v">${esc(notes)}</div></div>`:''}</div>
+    <div class="btnrow"><button class="btn" data-act="edit">Fix a detail</button></div>`;
+  $('detailSheet').dataset.row = row;
+  $('detailOverlay').classList.add('open');
+}
+
+async function adjust(row, delta){
+  const b = bottles.find(x=>x.row===row); if(!b) return;
+  if(delta<0 && b.amount===0){ toast('Already at zero'); return; }
+  const r = await write({action:'adjust', row, delta},
+    delta>0 ? 'Added one \u2014 nice pickup' : 'Marked one opened', true);
+  if(r){ undoAction = {row, delta}; const el=$('qn'); if(el) el.textContent = r.amount; }
+}
+
+async function undo(){
+  if(!undoAction) return;
+  const a = undoAction; undoAction = null;
+  await write({action:'adjust', row:a.row, delta:-a.delta}, 'Undone');
+}
+
+/* ---------- "I bought a bottle" wizard ---------- */
+function openAdd(){
+  $('addSheet').innerHTML = `
+    <button class="closex" data-act="close">\u00d7</button>
+    <h2>I bought a bottle</h2>
+    <div class="stepnote">Type the name on the label. If it\u2019s already in the collection, one tap adds it \u2014 no typing the details again.</div>
+    <div class="field"><label>Bottle name</label>
+      <input id="a_name" autocomplete="off" autocapitalize="words" placeholder="e.g. Eagle Rare">
+    </div>
+    <div class="suggest" id="suggest"></div>
+    <button class="btn primary big" id="newLabelBtn" style="display:none;width:100%">It\u2019s new \u2014 add \u201c<span id="newName"></span>\u201d</button>`;
+  $('addOverlay').classList.add('open');
+  const inp = $('a_name');
+  inp.addEventListener('input', renderSuggest);
+  setTimeout(()=>inp.focus(), 250);
+}
+
+function renderSuggest(){
+  const q = $('a_name').value.trim().toLowerCase();
+  const box = $('suggest'), btn = $('newLabelBtn');
+  if(q.length < 2){ box.innerHTML=''; btn.style.display='none'; return; }
+  const matches = bottles.filter(b=>b.name.toLowerCase().includes(q)).slice(0,6);
+  box.innerHTML = matches.map(b=>{
+    const sub = [b.style,b.proof?b.proof+' proof':'',b.size].filter(Boolean).join(' \u00b7 ');
+    return `<div class="s" data-row="${b.row}">
+      <div class="sname">${esc(b.name)}<small>${esc(sub)} \u00b7 ${b.amount} on hand</small></div>
+      <div class="splus">\uff0b Add one</div>
+    </div>`;
+  }).join('');
+  btn.style.display = 'block';
+  $('newName').textContent = $('a_name').value.trim();
+}
+
+/* tap a suggestion → confirm screen (prevents accidental adds) */
+function confirmExisting(row){
+  const b = bottles.find(x=>x.row===row); if(!b) return;
+  $('addSheet').innerHTML = `
+    <button class="closex" data-act="close">\u00d7</button>
+    <h2>Add one more?</h2>
+    <div class="confirmcard">
+      <div class="big">${esc(b.name)}</div>
+      <div class="small">${esc([b.style,b.proof?b.proof+' proof':'',b.size].filter(Boolean).join(' \u00b7 '))}</div>
+      <div class="small" style="margin-top:6px">You have <b style="color:var(--amber)">${b.amount}</b> \u2192 will become <b style="color:var(--amber)">${b.amount+1}</b></div>
+    </div>
+    <div class="btnrow">
+      <button class="btn" data-act="backToAdd">Back</button>
+      <button class="btn primary big" id="confirmPlus" data-row="${b.row}">Yes, add it</button>
+    </div>
+    <button class="linkbtn" id="notSame" data-name="${esc(b.name)}">Mine is different (new pick / store / proof)</button>`;
+}
+
+/* new label form — every column on the sheet, walked through top to bottom */
+function openNewForm(name){
+  $('addSheet').innerHTML = `
+    <button class="closex" data-act="close">\u00d7</button>
+    <h2>New bottle</h2>
+    <div class="stepnote">Fill in everything off the label \u2014 this is the only place it gets logged. Put NA if the label doesn\u2019t say.</div>
+    <div class="field"><label>Name</label><input id="f_name" value="${esc(name)}" autocapitalize="words"></div>
+    <div class="field"><label>How many did you buy?</label>
+      <select id="f_amount">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<option>${n}</option>`).join('')}</select></div>
+    <div class="field"><label>Type</label>
+      <select id="f_type">${['Bourbon','Rye','Whiskey','Wheat','American Whiskey','Other'].map(t=>`<option>${t}</option>`).join('')}</select></div>
+    <div class="field"><label>Style <em>(Single Barrel, Small Batch, BNB, Barrel Proof\u2026)</em></label><input id="f_style"></div>
+    <div class="field"><label>Age <em>(e.g. 10 Years \u2014 NA if not stated)</em></label><input id="f_age" placeholder="NA"></div>
+    <div class="field"><label>Proof</label><input id="f_proof" inputmode="decimal" placeholder="e.g. 107"></div>
+    <div class="field"><label>Date on bottle <em>(bottled / dump date \u2014 NA if none)</em></label><input id="f_date" placeholder="NA"></div>
+    <div class="field"><label>Size</label>
+      <select id="f_size"><option>750 mL</option><option>1 L</option><option>1.75 L</option><option>375 mL</option></select></div>
+    <div class="field"><label>Notes <em>(store pick, society, barrel #\u2026)</em></label><input id="f_notes"></div>
+    <div class="field"><label>Extra notes <em>(BN #, bottle x of y\u2026)</em></label><input id="f_extra"></div>
+    <button class="btn primary big" id="saveNew" style="width:100%;margin-top:6px">Add to the cellar</button>`;
+}
+
+async function saveNew(){
+  const name = $('f_name').value.trim();
+  if(!name){ toast('Give it a name first'); $('f_name').focus(); return; }
+  const proof = $('f_proof').value.trim();
+  if(!proof){ toast('Add the proof \u2014 it\u2019s on the label'); $('f_proof').focus(); return; }
+  closeOverlays();
+  await write({action:'add', bottle:{
+    name, amount:Number($('f_amount').value)||1, type:$('f_type').value, style:$('f_style').value.trim(),
+    age:$('f_age').value.trim()||'NA', proof, date:$('f_date').value.trim()||'NA',
+    size:$('f_size').value, notes:$('f_notes').value.trim(), extraNotes:$('f_extra').value.trim()
+  }}, `${name} added to the cellar`);
+}
+
+/* ---------- edit (from detail) ---------- */
+function openEdit(row){
+  const b = bottles.find(x=>x.row===row); if(!b) return;
+  $('addSheet').innerHTML = `
+    <button class="closex" data-act="close">\u00d7</button>
+    <h2>Fix a detail</h2>
+    <div class="sub">${esc(b.name)}</div>
+    ${[['e_name','Name',b.name],['e_style','Style',b.style],['e_age','Age',b.age],['e_proof','Proof',b.proof],
+       ['e_date','Date',b.date],['e_size','Size',b.size],['e_notes','Notes',b.notes],['e_extra','Extra notes',b.extraNotes]]
+      .map(f=>`<div class="field"><label>${f[1]}</label><input id="${f[0]}" value="${esc(f[2])}"></div>`).join('')}
+    <div class="field"><label>Type</label>
+      <select id="e_type">${['Bourbon','Rye','Whiskey','Wheat','American Whiskey','Other'].map(t=>`<option ${t===b.type?'selected':''}>${t}</option>`).join('')}</select></div>
+    <button class="btn primary big" id="saveEdit" data-row="${row}" style="width:100%;margin-top:6px">Save changes</button>`;
+  closeOverlays();
+  $('addOverlay').classList.add('open');
+}
+
+async function saveEdit(row){
+  const b = bottles.find(x=>x.row===row); if(!b) return;
+  const name = $('e_name').value.trim();
+  if(!name){ toast('Name can\u2019t be empty'); return; }
+  closeOverlays();
+  await write({action:'update', row, bottle:{
+    name, amount:b.amount, type:$('e_type').value, style:$('e_style').value.trim(),
+    age:$('e_age').value.trim(), proof:$('e_proof').value.trim(), date:$('e_date').value.trim(),
+    size:$('e_size').value.trim(), notes:$('e_notes').value.trim(), extraNotes:$('e_extra').value.trim()
+  }}, 'Saved');
+}
+
+/* ---------- ui plumbing ---------- */
+function closeOverlays(){ document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open')); }
+let toastTimer;
+function toast(msg, withUndo){
+  const t=$('toast');
+  t.innerHTML = esc(msg) + (withUndo?'<button id="undoBtn">Undo</button>':'');
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{ t.classList.remove('show'); undoAction=null; }, withUndo?6000:2200);
+}
+
+document.addEventListener('click', e=>{
+  if(e.target.id==='undoBtn'){ undo(); return; }
+  const chip = e.target.closest('.chip');
+  if(chip){ typeFilter = chip.dataset.t; render(); return; }
+  if(e.target.closest('#bigadd')){ openAdd(); return; }
+  const sug = e.target.closest('.suggest .s');
+  if(sug){ confirmExisting(Number(sug.dataset.row)); return; }
+  if(e.target.closest('#newLabelBtn')){ openNewForm($('a_name').value.trim()); return; }
+  if(e.target.closest('#confirmPlus')){ const r=Number(e.target.closest('#confirmPlus').dataset.row); closeOverlays(); adjust(r,1); return; }
+  if(e.target.closest('#notSame')){ openNewForm(e.target.closest('#notSame').dataset.name); return; }
+  if(e.target.closest('#saveNew')){ saveNew(); return; }
+  const se = e.target.closest('#saveEdit');
+  if(se){ saveEdit(Number(se.dataset.row)); return; }
+  const card = e.target.closest('.card');
+  if(card){ openDetail(Number(card.dataset.row)); return; }
+  const act = e.target.closest('[data-act]');
+  if(act){
+    const a = act.dataset.act;
+    const row = Number($('detailSheet').dataset.row);
+    if(a==='minus') adjust(row,-1);
+    if(a==='plus') adjust(row,1);
+    if(a==='edit') openEdit(row);
+    if(a==='close') closeOverlays();
+    if(a==='backToAdd') openAdd();
+    return;
+  }
+  if(e.target.classList.contains('overlay')) closeOverlays();
+});
+$('q').addEventListener('input', render);
+
+load();
+</script>
+</body>
+</html>
